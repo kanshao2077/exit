@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+private/
+/EXIT/
+/release/
+*.zip
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example

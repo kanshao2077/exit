@@ -1,0 +1,36 @@
+import { chromium } from 'playwright';
+import { mkdir, writeFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+await mkdir('artifacts',{recursive:true});
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+try {
+const page=await browser.newPage({viewport:{width:1440,height:1000},colorScheme:'light',reducedMotion:'reduce'});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4180');
+await page.getByRole('button',{name:'影视创作',exact:false}).waitFor();
+assert.equal(await page.locator('.category-link').count(),6);
+assert.deepEqual(await page.locator('.category-name').allTextContents(),['影视创作','AI / 科技','设计灵感','开发编程','阅读知识','生活娱乐']);
+assert.equal(await page.locator('kbd').count(),0);
+assert.equal(await page.title(),'EXIT. — Your Web, in Order.');
+assert.equal(await page.locator('.brand span').evaluate(el=>getComputedStyle(el).color),'rgb(255, 121, 0)');
+await page.mouse.move(10,10);await page.screenshot({path:'artifacts/snapshot-home-light.png'});
+await page.emulateMedia({colorScheme:'dark'});await page.screenshot({path:'artifacts/snapshot-home-dark.png'});
+assert.equal(await page.locator('html').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(25, 25, 25)');
+await page.getByRole('button',{name:'影视创作',exact:false}).click();
+await page.locator('a[data-bookmark]').first().waitFor();
+await page.screenshot({path:'artifacts/snapshot-category-dark.png'});
+await page.emulateMedia({colorScheme:'light'});await page.screenshot({path:'artifacts/snapshot-category-light.png'});
+await page.getByRole('button',{name:'管理书签',exact:true}).click();
+const first=page.locator('.manage-row input[type=checkbox]').first();await first.check();
+await page.screenshot({path:'artifacts/snapshot-manage-light.png'});
+await page.getByRole('button',{name:'删除',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click();
+await page.getByRole('button',{name:'完成',exact:true}).click();
+const q=page.getByRole('searchbox',{name:'搜索全部书签'});await q.fill('Vercel');await page.locator('a[data-bookmark]').first().waitFor();assert.equal(await page.locator('a[data-bookmark]').count(),1);
+await q.fill('不存在的书签0000');await page.getByText('没有找到这个地方').waitFor();
+await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'EXIT. 首页'}).click();await page.screenshot({path:'artifacts/snapshot-mobile-light.png'});
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+await page.emulateMedia({colorScheme:'dark'});await page.screenshot({path:'artifacts/snapshot-mobile-dark.png'});
+assert.deepEqual(errors,[]);
+const result={status:'passed',checks:['local bookmark plan loaded','six purpose categories','original folder names replaced','no shortcut badge','orange brand dot','exact requested tab title','automatic light/dark','category management has select/delete/cancel','global search finds hidden folders','390px responsive layout','no runtime exceptions'],screenshots:7};
+await writeFile('artifacts/visual-results.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+} finally {await browser.close();}
